@@ -1,0 +1,41 @@
+name: Feature
+description: New feature or enhancement
+labels: ["feature"]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Feature title
+      placeholder: "e.g. Implement Event lifecycle state machine"
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - Event Management (F1)
+        - Task Management (F2)
+        - Communication / Posts (F3)
+        - Media / OneDrive (F4)
+        - KPI Engine (F5)
+        - Dashboard (F6)
+        - Reporting (F7)
+        - Notification (F8)
+        - Auth & Navigation (F9)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: What needs to be built and why?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      placeholder: |
+        - [ ] ...
+        - [ ] ...

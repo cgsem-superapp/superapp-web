@@ -1,0 +1,128 @@
+name: Task Tracker
+
+# Trunk-based rules:
+#   issue assigned  → In Progress  (dev picked it up)
+#   issue closed    → Done         (merged + closed by PR, or manually closed)
+#   schedule        → daily digest + stale flag
+
+on:
+  issues:
+    types: [closed, assigned, unassigned, labeled]
+  schedule:
+    - cron: "0 8 * * 1-5"   # weekdays 8 AM UTC
+
+jobs:
+  track-task-metrics:
+    runs-on: ubuntu-latest
+    # Don't run the full script on stale-only schedule runs
+    if: >
+      github.event_name == 'issues' ||
+      github.event_name == 'schedule'
+    steps:
+      - name: Update task metrics on board
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const projectId   = "PVT_kwDOEb7Vgs4Bb62w";
+            const statusField = "PVTSSF_lADOEb7Vgs4Bb62wzhWnlDI";
+
+            const STATUS = {
+              todo:       "5e0c780b",
+              inProgress: "f68e32db",
+              inReview:   "1569c34b",
+              done:       "f264e7dc"
+            };
+
+            async function getBoardItem(issueNumber) {
+              const data = await github.graphql(`
+                query($projectId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      items(first: 100) {
+                        nodes { id content { ... on Issue { number } } }
+                      }
+                    }
+                  }
+                }
+              `, { projectId });
+              return data.node.items.nodes.find(i => i.content?.number === issueNumber) ?? null;
+            }
+
+            async function setStatus(itemId, optionId) {
+              await github.graphql(`
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }) {
+                    projectV2Item { id }
+                  }
+                }
+              `, { projectId, itemId, fieldId: statusField, optionId });
+            }
+
+            // Issue assigned → In Progress
+            // Trunk rule: once a dev picks up an issue (creates feat/* branch + assigns), it moves here
+            if (context.eventName === "issues" && context.payload.action === "assigned") {
+              const issueNumber = context.payload.issue.number;
+              const item = await getBoardItem(issueNumber);
+              if (item) {
+                await setStatus(item.id, STATUS.inProgress);
+                console.log(`#${issueNumber} → In Progress (assigned to ${context.payload.assignee?.login})`);
+              }
+            }
+
+            // Issue closed → Done
+            // Note: pr-kanban-sync also sets Done on merge; this handles manual closes
+            if (context.eventName === "issues" && context.payload.action === "closed") {
+              const issueNumber = context.payload.issue.number;
+              const item = await getBoardItem(issueNumber);
+              if (item) {
+                await setStatus(item.id, STATUS.done);
+                console.log(`#${issueNumber} → Done (issue closed)`);
+              }
+            }
+
+            // Daily digest
+            if (context.eventName === "schedule") {
+              const { data: issues } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 50,
+                sort: "updated",
+                direction: "asc"
+              });
+
+              const today = new Date().toISOString().split("T")[0];
+              console.log(`\n=== Daily Digest ${today} — ${context.repo.repo} ===`);
+              console.log(`Open issues: ${issues.length}\n`);
+
+              for (const i of issues) {
+                const assignee = i.assignee?.login ?? "unassigned";
+                const labels   = i.labels.map(l => l.name).join(", ");
+                const updated  = i.updated_at.split("T")[0];
+                console.log(`  #${i.number} [${assignee}] ${i.title}`);
+                console.log(`         labels: ${labels || "none"}  last update: ${updated}`);
+              }
+            }
+
+  stale-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Flag stale issues (no activity 14d)
+        uses: actions/stale@v9
+        with:
+          stale-issue-message: >
+            This issue has had no activity for 14 days.
+            In trunk-based dev, issues should resolve quickly — please update
+            progress or close if no longer relevant. Auto-close in 7 days.
+          close-issue-message: "Closing due to inactivity. Reopen if still relevant."
+          days-before-stale: 14
+          days-before-close: 7
+          stale-issue-label: "stale"
+          exempt-issue-labels: "pinned,wont-close,epic"
