@@ -9,22 +9,80 @@ body:
       placeholder: "e.g. Implement Event lifecycle state machine"
     validations:
       required: true
+
   - type: dropdown
     id: module
     attributes:
       label: Module
       options:
-        - Event Management (F1)
-        - Task Management (F2)
-        - Communication / Posts (F3)
-        - Media / OneDrive (F4)
-        - KPI Engine (F5)
-        - Dashboard (F6)
-        - Reporting (F7)
-        - Notification (F8)
-        - Auth & Navigation (F9)
+        - "F1 - Event Management"
+        - "F2 - Task Management"
+        - "F3 - Communication/Posts"
+        - "F4 - Media/OneDrive"
+        - "F5 - KPI Engine"
+        - "F6 - Dashboard"
+        - "F7 - Reporting"
+        - "F8 - Notification"
+        - "F9 - Auth & Navigation"
     validations:
       required: true
+
+  - type: input
+    id: user_story
+    attributes:
+      label: User Story reference
+      placeholder: "e.g. US-A1, US-M4"
+      description: Reference from the PRD (US-G1..G4, US-M1..M7, US-A1..A9)
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "🔴 High"
+        - "🟡 Medium"
+        - "🟢 Low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Effort estimate
+      options:
+        - "XS — < 1 day"
+        - "S  — 1-2 days"
+        - "M  — 3-5 days"
+        - "L  — 1-2 weeks"
+        - "XL — > 2 weeks"
+    validations:
+      required: true
+
+  - type: input
+    id: start_date
+    attributes:
+      label: Start Date
+      placeholder: "YYYY-MM-DD"
+      description: When work is expected to begin
+    validations:
+      required: true
+
+  - type: input
+    id: end_date
+    attributes:
+      label: End Date (Deadline)
+      placeholder: "YYYY-MM-DD"
+      description: Expected completion date — used for the Roadmap view
+    validations:
+      required: true
+
+  - type: input
+    id: depends_on
+    attributes:
+      label: Depends on
+      placeholder: "#12, #15"
+      description: Issue numbers that must be done before this one (optional)
+
   - type: textarea
     id: description
     attributes:
@@ -32,6 +90,7 @@ body:
       placeholder: What needs to be built and why?
     validations:
       required: true
+
   - type: textarea
     id: acceptance
     attributes:
@@ -39,3 +98,5 @@ body:
       placeholder: |
         - [ ] ...
         - [ ] ...
+    validations:
+      required: true

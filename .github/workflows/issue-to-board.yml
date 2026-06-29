@@ -2,21 +2,67 @@ name: Add Issue to Kanban Board
 
 on:
   issues:
-    types: [opened, reopened]
+    types: [opened, reopened, edited]
 
 jobs:
   add-to-board:
     runs-on: ubuntu-latest
     steps:
-      - name: Add issue to project board
+      - name: Sync issue to project board
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
             const projectId = "PVT_kwDOEb7Vgs4Bb62w";
-            const issueNodeId = context.payload.issue.node_id;
 
-            // Add issue to project
+            // Field IDs
+            const FIELDS = {
+              status:    "PVTSSF_lADOEb7Vgs4Bb62wzhWnlDI",
+              priority:  "PVTSSF_lADOEb7Vgs4Bb62wzhWnlRo",
+              effort:    "PVTSSF_lADOEb7Vgs4Bb62wzhWnq-A",
+              module:    "PVTSSF_lADOEb7Vgs4Bb62wzhWnq-I",
+              startDate: "PVTF_lADOEb7Vgs4Bb62wzhWnq90",
+              endDate:   "PVTF_lADOEb7Vgs4Bb62wzhWnq94",
+            };
+
+            const STATUS_OPTIONS = {
+              todo:       "5e0c780b",
+              inProgress: "f68e32db",
+              inReview:   "1569c34b",
+              done:       "f264e7dc"
+            };
+
+            const PRIORITY_OPTIONS = {
+              "🔴 High":   "8784ab28",
+              "🟡 Medium": "91893f85",
+              "🟢 Low":    "f173d0ee"
+            };
+
+            const EFFORT_OPTIONS = {
+              "XS": "39090b48",
+              "S":  "ced0e243",
+              "M":  "a787992f",
+              "L":  "352edcb7",
+              "XL": "644ade74"
+            };
+
+            const MODULE_OPTIONS = {
+              "F1 - Event Management":    "42acddf5",
+              "F2 - Task Management":     "08959b57",
+              "F3 - Communication/Posts": "c13d7d69",
+              "F4 - Media/OneDrive":      "ffc2fe1d",
+              "F5 - KPI Engine":          "f9bb2912",
+              "F6 - Dashboard":           "ae667646",
+              "F7 - Reporting":           "c1a59318",
+              "F8 - Notification":        "72fbd378",
+              "F9 - Auth & Navigation":   "a8f7fcb5"
+            };
+
+            const issue      = context.payload.issue;
+            const issueBody  = issue.body ?? "";
+            const issueNodeId = issue.node_id;
+
+            // --- Add to project (idempotent) --------------------------------
             const addResult = await github.graphql(`
               mutation($projectId: ID!, $contentId: ID!) {
                 addProjectV2ItemById(input: {
@@ -30,23 +76,79 @@ jobs:
 
             const itemId = addResult.addProjectV2ItemById.item.id;
 
-            // Set Status to "Todo"
-            await github.graphql(`
-              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-                updateProjectV2ItemFieldValue(input: {
-                  projectId: $projectId
-                  itemId: $itemId
-                  fieldId: $fieldId
-                  value: { singleSelectOptionId: $optionId }
-                }) {
-                  projectV2Item { id }
+            // --- Helper: set a field value ----------------------------------
+            async function setField(fieldId, value) {
+              await github.graphql(`
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: $value
+                  }) {
+                    projectV2Item { id }
+                  }
                 }
-              }
-            `, {
-              projectId,
-              itemId,
-              fieldId: "PVTSSF_lADOEb7Vgs4Bb62wzhWnlDI",
-              optionId: "5e0c780b"  // Todo
-            });
+              `, { projectId, itemId, fieldId, value });
+            }
 
-            console.log(`Issue #${context.payload.issue.number} added to board as Todo`);
+            // --- Parse fields from issue body (GitHub form template format) -
+            function extractField(label) {
+              const re = new RegExp(`###\\s*${label}\\s*\\n+([^\\n#]+)`, "i");
+              return issueBody.match(re)?.[1]?.trim() ?? null;
+            }
+
+            // --- Set Status = Todo on open ----------------------------------
+            if (context.payload.action === "opened" || context.payload.action === "reopened") {
+              await setField(FIELDS.status, { singleSelectOptionId: STATUS_OPTIONS.todo });
+              console.log(`#${issue.number} → Todo`);
+            }
+
+            // --- Priority ---------------------------------------------------
+            const rawPriority = extractField("Priority");
+            if (rawPriority) {
+              // Match by prefix in case user typed "🔴 High — ..." from effort field
+              const priorityKey = Object.keys(PRIORITY_OPTIONS).find(k => rawPriority.startsWith(k));
+              if (priorityKey) {
+                await setField(FIELDS.priority, { singleSelectOptionId: PRIORITY_OPTIONS[priorityKey] });
+                console.log(`Priority → ${priorityKey}`);
+              }
+            }
+
+            // --- Effort -----------------------------------------------------
+            const rawEffort = extractField("Effort estimate");
+            if (rawEffort) {
+              const effortKey = Object.keys(EFFORT_OPTIONS).find(k => rawEffort.startsWith(k));
+              if (effortKey) {
+                await setField(FIELDS.effort, { singleSelectOptionId: EFFORT_OPTIONS[effortKey] });
+                console.log(`Effort → ${effortKey}`);
+              }
+            }
+
+            // --- Module -----------------------------------------------------
+            const rawModule = extractField("Module") ?? extractField("Affected Module");
+            if (rawModule) {
+              const moduleKey = Object.keys(MODULE_OPTIONS).find(k => rawModule.startsWith(k.split(" - ")[0]));
+              if (moduleKey) {
+                await setField(FIELDS.module, { singleSelectOptionId: MODULE_OPTIONS[moduleKey] });
+                console.log(`Module → ${moduleKey}`);
+              }
+            }
+
+            // --- Start Date -------------------------------------------------
+            const startDate = extractField("Start Date");
+            if (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+              await setField(FIELDS.startDate, { date: startDate });
+              console.log(`Start Date → ${startDate}`);
+            }
+
+            // --- End Date ---------------------------------------------------
+            const endDate = extractField("End Date \\(Deadline\\)") ??
+                            extractField("Target End Date") ??
+                            extractField("Fix deadline");
+            if (endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+              await setField(FIELDS.endDate, { date: endDate });
+              console.log(`End Date → ${endDate}`);
+            }
+
+            console.log(`Issue #${issue.number} synced to board`);

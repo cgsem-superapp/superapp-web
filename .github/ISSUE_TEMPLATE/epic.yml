@@ -1,0 +1,83 @@
+name: Epic
+description: Large roadmap item spanning multiple issues
+labels: ["epic"]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Epic title
+      placeholder: "e.g. Full Event Management lifecycle"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - "F1 - Event Management"
+        - "F2 - Task Management"
+        - "F3 - Communication/Posts"
+        - "F4 - Media/OneDrive"
+        - "F5 - KPI Engine"
+        - "F6 - Dashboard"
+        - "F7 - Reporting"
+        - "F8 - Notification"
+        - "F9 - Auth & Navigation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "🔴 High"
+        - "🟡 Medium"
+        - "🟢 Low"
+    validations:
+      required: true
+
+  - type: input
+    id: start_date
+    attributes:
+      label: Start Date
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: input
+    id: end_date
+    attributes:
+      label: Target End Date
+      placeholder: "YYYY-MM-DD"
+      description: Roadmap deadline for this epic
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      placeholder: What does done look like for this epic?
+    validations:
+      required: true
+
+  - type: textarea
+    id: child_issues
+    attributes:
+      label: Child Issues
+      placeholder: |
+        - [ ] #1 — Setup
+        - [ ] #2 — Core implementation
+        - [ ] #3 — Tests
+      description: List all issues that make up this epic
+    validations:
+      required: true
+
+  - type: textarea
+    id: user_stories
+    attributes:
+      label: User Stories covered
+      placeholder: "US-A1, US-M2, US-G3"
+      description: PRD references this epic satisfies

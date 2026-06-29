@@ -8,22 +8,58 @@ body:
       label: Bug summary
     validations:
       required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Affected Module
+      options:
+        - "F1 - Event Management"
+        - "F2 - Task Management"
+        - "F3 - Communication/Posts"
+        - "F4 - Media/OneDrive"
+        - "F5 - KPI Engine"
+        - "F6 - Dashboard"
+        - "F7 - Reporting"
+        - "F8 - Notification"
+        - "F9 - Auth & Navigation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "🔴 High — Critical / blocking"
+        - "🟡 Medium — Degraded experience"
+        - "🟢 Low — Minor / cosmetic"
+    validations:
+      required: true
+
+  - type: input
+    id: end_date
+    attributes:
+      label: Fix deadline
+      placeholder: "YYYY-MM-DD"
+      description: When this must be resolved by
+
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
     validations:
       required: true
+
   - type: textarea
     id: expected
     attributes:
       label: Expected vs Actual behavior
     validations:
       required: true
-  - type: dropdown
-    id: severity
+
+  - type: textarea
+    id: context
     attributes:
-      label: Severity
-      options: [Critical, High, Medium, Low]
-    validations:
-      required: true
+      label: Additional context
+      placeholder: Screenshots, logs, environment details
