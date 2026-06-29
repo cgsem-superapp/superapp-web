@@ -10,10 +10,11 @@
 
 1. [Thiên Đạo Chính Mạch — Trunk-Based Development](#1-thiên-đạo-chính-mạch--trunk-based-development)
 2. [Phong Ấn Kiếm Phổ — Quy Tắc Commit](#2-phong-ấn-kiếm-phổ--quy-tắc-commit)
-3. [Nhánh Phụ Luyện Chiêu — Branch Workflow](#3-nhánh-phụ-luyện-chiêu--branch-workflow)
-4. [Thỉnh Cầu Nhập Hội Mạch — Pull Request](#4-thỉnh-cầu-nhập-hội-mạch--pull-request)
-5. [Linh Vụ Truy Tung — Task & Kanban Tracking](#5-linh-vụ-truy-tung--task--kanban-tracking)
-6. [Chiêu Thức Nhật Dụng — Git Thường Ngày](#6-chiêu-thức-nhật-dụng--git-thường-ngày)
+3. [Phong Ấn Theo Dõi Tiến Độ — Commit & Task Progress](#3-phong-ấn-theo-dõi-tiến-độ--commit--task-progress)
+4. [Nhánh Phụ Luyện Chiêu — Branch Workflow](#4-nhánh-phụ-luyện-chiêu--branch-workflow)
+5. [Thỉnh Cầu Nhập Hội Mạch — Pull Request](#5-thỉnh-cầu-nhập-hội-mạch--pull-request)
+6. [Linh Vụ Truy Tung — Task & Kanban Tracking](#6-linh-vụ-truy-tung--task--kanban-tracking)
+7. [Chiêu Thức Nhật Dụng — Git Thường Ngày](#7-chiêu-thức-nhật-dụng--git-thường-ngày)
 
 ---
 
@@ -151,7 +152,103 @@ The state machine enforces valid transitions at compile time.
 
 ---
 
-## 3. Nhánh Phụ Luyện Chiêu — Branch Workflow
+## 3. Phong Ấn Theo Dõi Tiến Độ — Commit & Task Progress
+
+> *"Mỗi phong ấn là một tín hiệu — đồng môn nhìn vào kiếm phổ là biết ngươi đang ở đâu."*
+
+Ngoài quy tắc Conventional Commits ở trên, tông môn ta dùng thêm **issue reference trong commit** để hệ thống tự động cập nhật tiến độ trên Kanban board và GitHub Issue timeline.
+
+### Cú Pháp Tham Chiếu Issue
+
+```bash
+# Tham chiếu thông thường — ghi nhận commit vào issue, KHÔNG đóng issue
+git commit -m "feat(event): add draft state validation
+
+ref #12"
+
+# Đóng issue khi merge PR — dùng trong COMMIT CUỐI hoặc trong PR body
+git commit -m "feat(event): complete lifecycle state machine
+
+closes #12"
+```
+
+### Bảng Từ Khóa & Tác Động
+
+| Từ Khóa | Tác Động Lên Issue | Dùng Khi Nào |
+|---|---|---|
+| `ref #N` | Liên kết commit vào timeline của issue, issue vẫn mở | Commit giữa chừng, đang làm dở |
+| `refs #N` | Như trên | Như trên |
+| `see #N` | Như trên | Tham chiếu chéo, không trực tiếp |
+| `closes #N` | Đóng issue khi commit được merge vào `main` | Commit cuối hoặc PR body |
+| `fixes #N` | Như `closes` | Dành cho bug fix |
+| `resolves #N` | Như `closes` | Dành cho feature/task |
+
+> ⚠️ `closes #N` trong commit **chỉ có hiệu lực khi commit đó được merge vào `main`**, không đóng issue ngay khi push lên nhánh phụ.
+
+### Luồng Tiến Độ Qua Commit
+
+```
+feat/event-lifecycle  ── commit "ref #12" ──► Issue #12 timeline cập nhật
+                      ── commit "ref #12" ──► Issue #12 timeline cập nhật
+                      ── commit "ref #12" ──► Issue #12 timeline cập nhật
+                      ── mở PR "closes #12" ──► Issue #12 → IN REVIEW (Kanban)
+                      ── PR merged vào main ──► Issue #12 → DONE + đóng lại
+```
+
+### Ví Dụ Thực Tế — Một Feature Hoàn Chỉnh
+
+```bash
+# Commit 1 — bắt đầu, tham chiếu issue
+git commit -m "feat(event): scaffold EventStateMachine class
+
+ref #12"
+
+# Commit 2 — tiếp tục
+git commit -m "feat(event): implement Draft->Active transition with validation
+
+ref #12"
+
+# Commit 3 — thêm test
+git commit -m "test(event): add state transition unit tests
+
+ref #12"
+
+# Commit cuối — hoàn thành (hoặc để trong PR body thay vì đây)
+git commit -m "feat(event): complete lifecycle state machine implementation
+
+- All 5 states: Draft, Active, Monitoring, Closing, Reported
+- Invalid transition returns 409 Conflict
+- Full test coverage
+
+closes #12"
+```
+
+Sau khi PR merge, toàn bộ 4 commit trên sẽ hiển thị trong **Issue #12 timeline** — Chưởng Môn thấy được từng bước tiến độ, không cần hỏi thêm.
+
+### Tham Chiếu Nhiều Issue Cùng Lúc
+
+```bash
+# Một commit liên quan đến nhiều issue
+git commit -m "refactor(auth): centralize token validation logic
+
+ref #8, ref #15"
+
+# Một PR đóng nhiều issue
+# (viết trong PR body, không phải commit message)
+closes #8
+closes #15
+```
+
+### Checklist Commit Có Issue Reference
+
+- [ ] Commit giữa chừng → dùng `ref #N` trong footer
+- [ ] Commit hoàn thành hoặc PR body → dùng `closes #N`
+- [ ] Không dùng `closes` trong commit giữa chừng — sẽ đóng issue sớm trước khi PR merge
+- [ ] Mỗi commit chỉ reference issue thật sự liên quan — không spam `ref #N` vào mọi commit
+
+---
+
+## 4. Nhánh Phụ Luyện Chiêu — Branch Workflow
 
 > *"Ra nhánh để luyện, quy tông để hoàn thành. Nhánh phụ không phải chỗ ở — là chỗ luyện."*
 
@@ -212,7 +309,7 @@ git rebase origin/main
 
 ---
 
-## 4. Thỉnh Cầu Nhập Hội Mạch — Pull Request
+## 5. Thỉnh Cầu Nhập Hội Mạch — Pull Request
 
 > *"Không ai tự phong mình đã hoàn thành — phải qua cổng kiểm duyệt của đồng môn."*
 
@@ -258,7 +355,7 @@ Nếu PR không có dòng `closes #N`, GitHub Actions không thể di chuyển i
 
 ---
 
-## 5. Linh Vụ Truy Tung — Task & Kanban Tracking
+## 6. Linh Vụ Truy Tung — Task & Kanban Tracking
 
 > *"Linh vụ không có trong kiếm phổ là linh vụ không tồn tại."*
 
@@ -316,7 +413,7 @@ Ngoài tab **Board**, dùng tab **Roadmap** để xem Gantt chart theo Start Dat
 
 ---
 
-## 6. Chiêu Thức Nhật Dụng — Git Thường Ngày
+## 7. Chiêu Thức Nhật Dụng — Git Thường Ngày
 
 > *"Chiêu thức luyện nghìn lần thành phản xạ."*
 
